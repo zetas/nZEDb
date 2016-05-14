@@ -22,13 +22,13 @@ namespace app\models;
 /**
  * Settings - model for settings table.
  *
- * li3 app completely ignore the 'setting' column and only uses 'section', 'subsection', and 'name'
+ * li3 app completely ignores the 'setting' column and only uses 'section', 'subsection', and 'name'
  * for finding values/hints.
  *
 *@package app\models
  */
-class Settings extends \lithium\data\Model {
-
+class Settings extends \lithium\data\Model
+{
 	public $validates = [];
 
 	protected $_meta = [
