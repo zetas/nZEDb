@@ -19,17 +19,29 @@
 namespace app\extensions\data;
 
 
+/**
+ * Class Model - extends the base Model class to add methods for the models to import/export
+ * their data easily. These may need to be moved to somewhere more appropriate for SQL specific
+ * metohds (i.e. adapter or Database classes).
+ *
+*@package app\extensions\data
+ */
 class Model extends \lithium\data\Model
 {
+	/**
+	 * @var array Default options for use with SELECT INTO OUTFILE.
+	 */
+	protected $outfileOptions = [
+		'enclosedby' => '',
+		'fields'     => '\t',
+		'limit'      => 0,
+		'lines'      => '\r\n', // use Windows style endings so that text can contain \n
+		'path'       => null,
+	];
+
 	public function exportTable(array $options = [])
 	{
-		$defaults = [
-			'enclosedby' => '',
-			'fields'     => '\t',
-			'limit'      => 0,
-			'lines'      => '\r\n', // use Windows style endings so that text can contain \n
-			'path'       => null,
-		];
+		$defaults = [];
 		$options += $defaults;
 	}
 
