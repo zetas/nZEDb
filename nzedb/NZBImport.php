@@ -287,12 +287,12 @@ class NZBImport
 			// Make a fake message array to use to check the blacklist.
 			$msg = ["Subject" => (string)$file->attributes()->subject, "From" => (string)$file->attributes()->poster, "Message-ID" => ""];
 
-			// Get the group names, group_id, check if it's blacklisted.
+			// Get the group names, groups_id, check if it's blacklisted.
 			$groupArr = [];
 			foreach ($file->groups->group as $group) {
 				$group = (string)$group;
 
-				// If group_id is -1 try to get a group_id.
+				// If groups_id is -1 try to get a groups_id.
 				if ($groupID === -1) {
 					if (array_key_exists($group, $this->allGroups)) {
 						$groupID = $this->allGroups[$group];
@@ -353,7 +353,7 @@ class NZBImport
 				'useFName'   => $useNzbName,
 				'postDate'   => (empty($postDate) ? date("Y-m-d H:i:s") : $postDate),
 				'from'       => (empty($posterName) ? '' : $posterName),
-				'group_id'    => $groupID,
+				'groups_id'  => $groupID,
 				'groupName'  => $groupName,
 				'totalFiles' => $totalFiles,
 				'totalSize'  => $totalSize
@@ -416,12 +416,12 @@ class NZBImport
 					'name' => $escapedSubject,
 					'searchname' => $escapedSearchName,
 					'totalpart' => $nzbDetails['totalFiles'],
-					'group_id' => $nzbDetails['group_id'],
+					'groups_id' => $nzbDetails['groups_id'],
 					'guid' => $this->pdo->escapeString($this->relGuid),
 					'postdate' => $this->pdo->escapeString($nzbDetails['postDate']),
 					'fromname' => $escapedFromName,
 					'size' => $this->pdo->escapeString($nzbDetails['totalSize']),
-					'categories_id' => $this->category->determineCategory($nzbDetails['group_id'], $cleanName),
+					'categories_id' => $this->category->determineCategory($nzbDetails['groups_id'], $cleanName),
 					'isrenamed' => $renamed,
 					'reqidstatus' => 0,
 					'predb_id' => 0,

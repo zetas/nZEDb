@@ -334,7 +334,7 @@ class Movie
 			g.name AS group_name,
 			rn.releases_id AS nfoid
 			FROM releases r
-			LEFT OUTER JOIN groups g ON g.id = r.group_id
+			LEFT OUTER JOIN groups g ON g.id = r.groups_id
 			LEFT OUTER JOIN release_nfos rn ON rn.releases_id = r.id
 			LEFT OUTER JOIN dnzb_failures df ON df.release_id = r.id
 			LEFT OUTER JOIN categories c ON c.id = r.categories_id
@@ -1083,7 +1083,7 @@ class Movie
 			%s %s %s %s
 			LIMIT %d",
 			$this->catWhere,
-			($groupID === '' ? '' : ('AND r.group_id = ' . $groupID)),
+			($groupID === '' ? '' : ('AND r.groups_id = ' . $groupID)),
 			($guidChar === '' ? '' : 'AND r.leftguid = ' . $this->pdo->escapeString($guidChar)),
 			($lookupIMDB == 2 ? 'AND r.isrenamed = 1' : ''),
 			$this->movieqty
