@@ -628,11 +628,17 @@ class Releases
 		}
 
 		// Delete from DB.
+		/*
 		$query = $this->pdo->prepare('CALL delete_release(:is_numeric, :identifier)');
 		$query->bindParam(':is_numeric', $param1, \PDO::PARAM_BOOL);
 		$query->bindParam(':identifier', $param2);
 
 		$query->execute();
+		*/
+		$result = $this->pdo->queryExec("CALL delete_release($param1, :'$param2')");
+		if ($result === false) {
+			$this->pdo->log->error('Deleting FAILED!!S');
+		}
 	}
 
 	/**
