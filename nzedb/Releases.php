@@ -635,7 +635,7 @@ class Releases
 
 		$query->execute();
 		*/
-		$result = $this->pdo->queryExec("CALL delete_release($param1, :'$param2')");
+		$result = $this->pdo->queryExec("CALL delete_release($param1, '$param2')");
 		if ($result === false) {
 			$this->pdo->log->error('Deleting FAILED!!S');
 		}
