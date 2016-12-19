@@ -8,6 +8,7 @@ use nzedb\Category;
 use nzedb\ConsoleTools;
 use nzedb\Genres;
 use nzedb\Groups;
+use nzedb\Logger;
 use nzedb\NZB;
 use nzedb\PreDb;
 use nzedb\ReleaseCleaning;
@@ -1230,7 +1231,7 @@ class ProcessReleases
 		$category = new Category(['Settings' => $this->pdo]);
 		$genres = new Genres(['Settings' => $this->pdo]);
 		$passwordDeleted = $duplicateDeleted = $retentionDeleted = $completionDeleted = $disabledCategoryDeleted = 0;
-		$disabledGenreDeleted = $miscRetentionDeleted = $miscHashedDeleted = $categoryMinSizeDeleted = 0;
+		$dummy =$disabledGenreDeleted = $miscRetentionDeleted = $miscHashedDeleted = $categoryMinSizeDeleted = 0;
 
 		// Delete old releases and finished collections.
 		if ($this->echoCLI) {
@@ -1239,54 +1240,81 @@ class ProcessReleases
 
 		// Releases past retention.
 		if (Settings::value('..releaseretentiondays') != 0) {
+			$query = sprintf(
+				'SELECT SQL_NO_CACHE id, guid FROM releases WHERE postdate < (NOW() - INTERVAL %d DAY)',
+				Settings::value('..releaseretentiondays')
+			);
+			$this->getDeleteRows($query, $retentionDeleted);
+/*
 			$releases = $this->pdo->queryDirect(
 				sprintf(
 					'SELECT SQL_NO_CACHE id, guid FROM releases WHERE postdate < (NOW() - INTERVAL %d DAY)',
 					Settings::value('..releaseretentiondays')
 				)
 			);
-			if ($releases instanceof \Traversable) {
+			if ($releases !== false) {
 				foreach ($releases as $release) {
 					$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					$retentionDeleted++;
 				}
 			}
+*/
 		}
 
 		// Passworded releases.
 		if (Settings::value('..deletepasswordedrelease') == 1) {
+			$query = sprintf(
+				'SELECT SQL_NO_CACHE id, guid FROM releases WHERE passwordstatus = %d',
+				Releases::PASSWD_RAR
+			);
+			$this->getDeleteRows($query, $passwordDeleted);
+/*
 			$releases = $this->pdo->queryDirect(
 				sprintf(
 					'SELECT SQL_NO_CACHE id, guid FROM releases WHERE passwordstatus = %d',
 					Releases::PASSWD_RAR
 				)
 			);
-			if ($releases instanceof \Traversable) {
+			if ($releases !== false) {
 				foreach ($releases as $release) {
 					$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					$passwordDeleted++;
 				}
 			}
+*/
 		}
 
 		// Possibly passworded releases.
 		if (Settings::value('..deletepossiblerelease') == 1) {
+			$query = sprintf(
+				'SELECT SQL_NO_CACHE id, guid FROM releases WHERE passwordstatus = %d',
+				Releases::PASSWD_POTENTIAL
+			);
+			$this->getDeleteRows($query, $passwordDeleted);
+/*
 			$releases = $this->pdo->queryDirect(
 				sprintf(
 					'SELECT SQL_NO_CACHE id, guid FROM releases WHERE passwordstatus = %d',
 					Releases::PASSWD_POTENTIAL
 				)
 			);
-			if ($releases instanceof \Traversable) {
+			if ($releases !== false) {
 				foreach ($releases as $release) {
 					$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					$passwordDeleted++;
 				}
 			}
+*/
 		}
 
 		if ($this->crossPostTime != 0) {
 			// Crossposted releases.
+			$query = sprintf(
+				'SELECT SQL_NO_CACHE id, guid FROM releases WHERE adddate > (NOW() - INTERVAL %d HOUR) GROUP BY name HAVING COUNT(name) > 1',
+				$this->crossPostTime
+			);
+			$this->getDeleteRows($query, $duplicateDeleted);
+/*
 			$releases = $this->pdo->queryDirect(
 				sprintf(
 					'SELECT SQL_NO_CACHE id, guid FROM releases WHERE adddate > (NOW() - INTERVAL %d HOUR) GROUP BY name HAVING COUNT(name) > 1',
@@ -1298,25 +1326,36 @@ class ProcessReleases
 					$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					$duplicateDeleted++;
 				}
+			} elseif (nZEDb_LOGQUERIES) {
+				$this->pdo->debugging->log(get_class(), __FUNCTION__, $query, 6);
 			}
+*/
 		}
 
 		if ($this->completion > 0) {
-			$releases = $this->pdo->queryDirect(
-				sprintf('SELECT SQL_NO_CACHE id, guid FROM releases WHERE completion < %d AND completion > 0', $this->completion)
-			);
+			$query = sprintf('SELECT SQL_NO_CACHE id, guid FROM releases WHERE completion < %d AND completion > 0', $this->completion);
+			$this->getDeleteRows($query, $completionDeleted);
+			/*
+			$releases = $this->pdo->queryDirect($query);
 			if ($releases !== false) {
 				foreach ($releases as $release) {
 					$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					$completionDeleted++;
 				}
+			} elseif (nZEDb_LOGQUERIES) {
+				$this->pdo->debugging->log(get_class(), __FUNCTION__, $query, 6);
 			}
+			*/
 		}
 
 		// Disabled categories.
 		$disabledCategories = $category->getDisabledIDs();
 		if (count($disabledCategories) > 0) {
 			foreach ($disabledCategories as $disabledCategory) {
+				$query = sprintf('SELECT SQL_NO_CACHE id, guid FROM releases WHERE categories_id = %d',
+					$disabledCategory['id']);
+				$this->getDeleteRows($query, $dummy);
+/*
 				$releases = $this->pdo->queryDirect(
 					sprintf('SELECT SQL_NO_CACHE id, guid FROM releases WHERE categories_id = %d', $disabledCategory['id'])
 				);
@@ -1326,6 +1365,7 @@ class ProcessReleases
 						$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					}
 				}
+*/
 			}
 		}
 
@@ -1341,6 +1381,16 @@ class ProcessReleases
 		if ($categories instanceof \Traversable) {
 			foreach ($categories as $category) {
 				if ($category['minsize'] > 0) {
+					$query = sprintf('
+							SELECT SQL_NO_CACHE r.id, r.guid
+							FROM releases r
+							WHERE r.categories_id = %d
+							AND r.size < %d LIMIT 1000',
+						$category['id'],
+						$category['minsize']
+					);
+					$this->getDeleteRows($query, $categoryMinSizeDeleted);
+/*
 					$releases = $this->pdo->queryDirect(
 						sprintf('
 							SELECT SQL_NO_CACHE r.id, r.guid
@@ -1357,6 +1407,7 @@ class ProcessReleases
 							$categoryMinSizeDeleted++;
 						}
 					}
+*/
 				}
 			}
 		}
@@ -1365,6 +1416,14 @@ class ProcessReleases
 		$genrelist = $genres->getDisabledIDs();
 		if (count($genrelist) > 0) {
 			foreach ($genrelist as $genre) {
+				$query = sprintf('
+						SELECT SQL_NO_CACHE id, guid
+						FROM releases
+						INNER JOIN (SELECT id AS mid FROM musicinfo WHERE musicinfo.genre_id = %d) mi
+						ON musicinfo_id = mid',
+					$genre['id']);
+				$this->getDeleteRows($query, $disabledGenreDeleted);
+/*
 				$releases = $this->pdo->queryDirect(
 					sprintf('
 						SELECT SQL_NO_CACHE id, guid
@@ -1380,11 +1439,21 @@ class ProcessReleases
 						$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					}
 				}
+*/
 			}
 		}
 
 		// Misc other.
 		if (Settings::value('..miscotherretentionhours') > 0) {
+			$query = sprintf('
+					SELECT SQL_NO_CACHE id, guid
+					FROM releases
+					WHERE categories_id = %d
+					AND adddate <= NOW() - INTERVAL %d HOUR',
+				Category::OTHER_MISC,
+				Settings::value('..miscotherretentionhours'));
+			$this->getDeleteRows($query, $miscRetentionDeleted);
+			/*
 			$releases = $this->pdo->queryDirect(
 				sprintf('
 					SELECT SQL_NO_CACHE id, guid
@@ -1401,10 +1470,21 @@ class ProcessReleases
 					$miscRetentionDeleted++;
 				}
 			}
+			*/
 		}
 
 		// Misc hashed.
 		if (Settings::value('..mischashedretentionhours') > 0) {
+			$query = sprintf('
+					SELECT SQL_NO_CACHE id, guid
+					FROM releases
+					WHERE categories_id = %d
+					AND adddate <= NOW() - INTERVAL %d HOUR',
+				Category::OTHER_HASHED,
+				Settings::value('..mischashedretentionhours')
+			);
+			$this->getDeleteRows($query, );
+/*
 			$releases = $this->pdo->queryDirect(
 				sprintf('
 					SELECT SQL_NO_CACHE id, guid
@@ -1421,6 +1501,7 @@ class ProcessReleases
 					$miscHashedDeleted++;
 				}
 			}
+*/
 		}
 
 		if ($this->echoCLI) {
@@ -1463,6 +1544,21 @@ class ProcessReleases
 					)
 				);
 			}
+		}
+	}
+
+	private function getDeleteRows($query, &$count)
+	{
+		$releases = $this->pdo->queryDirect($query);
+		if ($releases !== false) {
+			foreach ($releases as $release) {
+				$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']],
+					$this->nzb,
+					$this->releaseImage);
+				$count++;
+			}
+		} elseif (nZEDb_LOGQUERIES) {
+			$this->pdo->debugging->log(get_class(), __FUNCTION__, $query, Logger::LOG_SQL);
 		}
 	}
 
