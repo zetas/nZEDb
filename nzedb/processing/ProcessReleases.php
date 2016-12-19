@@ -1293,7 +1293,7 @@ class ProcessReleases
 					$this->crossPostTime
 				)
 			);
-			if ($releases instanceof \Traversable) {
+			if ($releases !== false) {
 				foreach ($releases as $release) {
 					$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					$duplicateDeleted++;
@@ -1305,7 +1305,7 @@ class ProcessReleases
 			$releases = $this->pdo->queryDirect(
 				sprintf('SELECT SQL_NO_CACHE id, guid FROM releases WHERE completion < %d AND completion > 0', $this->completion)
 			);
-			if ($releases instanceof \Traversable) {
+			if ($releases !== false) {
 				foreach ($releases as $release) {
 					$this->releases->deleteSingle(['g' => $release['guid'], 'i' => $release['id']], $this->nzb, $this->releaseImage);
 					$completionDeleted++;
