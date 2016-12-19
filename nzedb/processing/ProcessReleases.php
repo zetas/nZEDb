@@ -1483,7 +1483,7 @@ class ProcessReleases
 				Category::OTHER_HASHED,
 				Settings::value('..mischashedretentionhours')
 			);
-			$this->getDeleteRows($query, );
+			$this->getDeleteRows($query, $miscHashedDeleted);
 /*
 			$releases = $this->pdo->queryDirect(
 				sprintf('
